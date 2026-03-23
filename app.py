@@ -1,10 +1,20 @@
 from flask import Flask, render_template, jsonify
+import os
 import requests
 import logging
 import time
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per hour"],
+    storage_uri="memory://",
+)
 
 BASE_URL = "https://api.openligadb.de"
 CURRENT_SEASON = "2025"  # 2025/26 season
@@ -105,4 +115,6 @@ def team_form(league):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    host = os.getenv("FLASK_HOST", "127.0.0.1")
+    app.run(debug=debug, host=host, port=5000)
