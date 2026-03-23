@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+testpaths  = ["tests"]
+addopts    = "-v --tb=short"
+pythonpath = ["."]
+
+[tool.coverage.run]
+omit = [
+    ".venv/*",
+    "tests/*",
+]

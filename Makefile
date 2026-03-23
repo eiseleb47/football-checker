@@ -1,7 +1,11 @@
-.PHONY: run setup install
+.PHONY: run test setup install
 
 run: .venv
 	.venv/bin/python app.py
+
+test: .venv
+	.venv/bin/pip install -q pytest pytest-cov
+	.venv/bin/pytest tests/
 
 setup install: .venv
 
