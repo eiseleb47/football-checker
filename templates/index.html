@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="de" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bundesliga Live</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #0d1117; }
+
+    /* Live pulse animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .live-pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+    /* Match cards */
+    .match-card {
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      transition: border-color 0.2s;
+      cursor: pointer;
+    }
+    .match-card:hover { border-color: #58a6ff; }
+    .match-card.is-live { border-left: 3px solid #f85149; }
+    .match-card.is-today { border-left: 3px solid #3fb950; }
+
+    /* Score */
+    .score-display {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      line-height: 1.1;
+    }
+    .score-ht {
+      font-size: 0.7rem;
+      color: #8b949e;
+      letter-spacing: 1px;
+    }
+
+    /* Teams */
+    .team-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+    .team-logo-sm {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+      vertical-align: middle;
+    }
+    .team-name {
+      font-size: 0.88rem;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    /* Goals section */
+    .goals-section {
+      border-top: 1px solid #21262d;
+      font-size: 0.82rem;
+    }
+    .goal-row {
+      padding: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .goal-minute {
+      color: #8b949e;
+      min-width: 28px;
+      text-align: right;
+      font-size: 0.78rem;
+    }
+    .goal-dot { color: #f0a500; font-size: 0.55rem; }
+    .goal-score { color: #8b949e; margin-left: auto; white-space: nowrap; }
+
+    /* Date group */
+    .date-header {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #8b949e;
+      padding: 8px 4px 4px;
+    }
+
+    /* Section titles */
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8b949e;
+      border-bottom: 1px solid #21262d;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+
+    /* Standings */
+    .standings-card {
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+    }
+    .standings-card .table { margin-bottom: 0; font-size: 0.82rem; }
+    .standings-card .table th {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #8b949e;
+      border-color: #21262d;
+      font-weight: 400;
+    }
+    .standings-card .table td { border-color: #21262d; }
+    .standings-card .table tbody tr:last-child td { border-bottom: none; }
+
+    /* Position indicators (left border on td:first-child) */
+    .pos-cl td:first-child  { border-left: 3px solid #388bfd; }
+    .pos-el td:first-child  { border-left: 3px solid #d29922; }
+    .pos-conf td:first-child { border-left: 3px solid #3fb950; }
+    .pos-rel-po td:first-child { border-left: 3px solid #db6d28; }
+    .pos-rel td:first-child  { border-left: 3px solid #f85149; }
+    .pos-up td:first-child   { border-left: 3px solid #3fb950; }
+    .pos-up-po td:first-child { border-left: 3px solid #388bfd; }
+
+    /* Scorers */
+    .scorer-card {
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+    }
+    .scorer-bar {
+      height: 4px;
+      background: linear-gradient(90deg, #388bfd, #3fb950);
+      border-radius: 2px;
+    }
+
+    /* Navbar */
+    .navbar { background-color: #161b22 !important; border-bottom: 1px solid #30363d; }
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #f85149;
+      border-radius: 50%;
+    }
+
+    /* Nav pills */
+    .nav-pills .nav-link { color: #8b949e; }
+    .nav-pills .nav-link.active { background-color: #388bfd; color: #fff; }
+
+    /* Matchday nav */
+    .matchday-nav .btn-nav {
+      background: none;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      border-radius: 6px;
+      padding: 2px 8px;
+      line-height: 1.5;
+    }
+    .matchday-nav .btn-nav:hover { border-color: #58a6ff; color: #58a6ff; }
+    .matchday-label { font-weight: 600; min-width: 110px; text-align: center; font-size: 0.9rem; }
+
+    /* Form dots */
+    .form-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+
+    /* Goal timeline */
+    .goal-timeline-bar {
+      position: relative;
+      height: 4px;
+      background: #21262d;
+      border-radius: 2px;
+      margin: 10px 0 3px;
+    }
+    .goal-timeline-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid #0d1117;
+      cursor: default;
+      z-index: 1;
+    }
+    .goal-timeline-ht {
+      position: absolute;
+      top: -4px;
+      width: 1px;
+      height: 12px;
+      background: #484f58;
+    }
+
+    /* Two-column goals */
+    .goals-col-divider {
+      width: 1px;
+      background: #21262d;
+      flex-shrink: 0;
+    }
+    .goals-col { font-size: 0.8rem; }
+
+    /* Match stats bar */
+    .match-stats-bar {
+      font-size: 0.75rem;
+      color: #8b949e;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #21262d;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 576px) {
+      .team-name { font-size: 0.78rem; }
+      .score-display { font-size: 1.1rem; }
+      .d-xs-none { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark sticky-top">
+  <div class="container-fluid px-3">
+    <span class="navbar-brand mb-0 h1" style="font-size:1.1rem;">
+      <i class="bi bi-trophy-fill text-warning me-1"></i>
+      Bundesliga Live
+    </span>
+    <div class="d-flex align-items-center gap-3" style="font-size:0.82rem;">
+      <span id="live-indicator" style="display:none;">
+        <span class="live-dot live-pulse me-1"></span>
+        <span id="live-count" class="text-danger fw-bold"></span>
+        <span class="text-muted"> live</span>
+      </span>
+      <span class="text-muted d-none d-sm-inline">
+        <span id="refresh-spinner" class="spinner-border spinner-border-sm me-1" style="display:none;" role="status"></span>
+        <span id="last-update">–</span>
+        <span class="ms-1">(<span id="countdown">60</span>s)</span>
+      </span>
+      <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="manualRefresh()" title="Jetzt aktualisieren">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid py-3 px-3" style="max-width:1400px;">
+
+  <!-- League tabs -->
+  <ul class="nav nav-pills mb-3" id="leagueTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="bl1-tab" data-bs-toggle="pill" data-bs-target="#bl1-pane" type="button" role="tab" aria-selected="true">
+        <i class="bi bi-1-circle me-1"></i>1. Bundesliga
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="bl2-tab" data-bs-toggle="pill" data-bs-target="#bl2-pane" type="button" role="tab" aria-selected="false">
+        <i class="bi bi-2-circle me-1"></i>2. Bundesliga
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ========== 1. Bundesliga ========== -->
+    <div class="tab-pane fade show active" id="bl1-pane" role="tabpanel">
+      <div class="row g-3">
+
+        <!-- Matches -->
+        <div class="col-xl-7">
+          <!-- Matchday navigation -->
+          <div class="matchday-nav d-flex align-items-center gap-2 mb-3">
+            <button class="btn-nav" onclick="prevMatchday('bl1')" id="prev-bl1" title="Vorheriger Spieltag">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <span class="matchday-label" id="matchday-label-bl1">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+            <button class="btn-nav" onclick="nextMatchday('bl1')" id="next-bl1" title="Nächster Spieltag">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            <button class="btn-nav ms-1" onclick="goToCurrentMatchday('bl1')" title="Aktueller Spieltag">
+              <i class="bi bi-house"></i>
+            </button>
+          </div>
+          <div id="matches-bl1"><div class="text-center text-muted py-5"><div class="spinner-border me-2"></div>Lade Spiele...</div></div>
+        </div>
+
+        <!-- Standings + Scorers -->
+        <div class="col-xl-5">
+          <!-- Tabs within right column -->
+          <ul class="nav nav-pills nav-sm mb-2" id="bl1-right-tabs">
+            <li class="nav-item">
+              <button class="nav-link active py-1 px-2" style="font-size:0.8rem;" data-bs-toggle="pill" data-bs-target="#bl1-table-pane">Tabelle</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link py-1 px-2" style="font-size:0.8rem;" data-bs-toggle="pill" data-bs-target="#bl1-scorers-pane">Torjäger</button>
+            </li>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="bl1-table-pane">
+              <div class="standings-card p-2">
+                <div id="table-bl1"><div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm me-2"></div>Lade Tabelle...</div></div>
+                <div id="legend-bl1" class="mt-2 px-1" style="font-size:0.7rem; color:#8b949e;"></div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="bl1-scorers-pane">
+              <div class="scorer-card p-2">
+                <div id="scorers-bl1"><div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm me-2"></div>Lade...</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========== 2. Bundesliga ========== -->
+    <div class="tab-pane fade" id="bl2-pane" role="tabpanel">
+      <div class="row g-3">
+
+        <!-- Matches -->
+        <div class="col-xl-7">
+          <div class="matchday-nav d-flex align-items-center gap-2 mb-3">
+            <button class="btn-nav" onclick="prevMatchday('bl2')" id="prev-bl2" title="Vorheriger Spieltag">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <span class="matchday-label" id="matchday-label-bl2">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+            <button class="btn-nav" onclick="nextMatchday('bl2')" id="next-bl2" title="Nächster Spieltag">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            <button class="btn-nav ms-1" onclick="goToCurrentMatchday('bl2')" title="Aktueller Spieltag">
+              <i class="bi bi-house"></i>
+            </button>
+          </div>
+          <div id="matches-bl2"><div class="text-center text-muted py-5"><div class="spinner-border me-2"></div>Lade Spiele...</div></div>
+        </div>
+
+        <!-- Standings + Scorers -->
+        <div class="col-xl-5">
+          <ul class="nav nav-pills nav-sm mb-2" id="bl2-right-tabs">
+            <li class="nav-item">
+              <button class="nav-link active py-1 px-2" style="font-size:0.8rem;" data-bs-toggle="pill" data-bs-target="#bl2-table-pane">Tabelle</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link py-1 px-2" style="font-size:0.8rem;" data-bs-toggle="pill" data-bs-target="#bl2-scorers-pane">Torjäger</button>
+            </li>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="bl2-table-pane">
+              <div class="standings-card p-2">
+                <div id="table-bl2"><div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm me-2"></div>Lade Tabelle...</div></div>
+                <div id="legend-bl2" class="mt-2 px-1" style="font-size:0.7rem; color:#8b949e;"></div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="bl2-scorers-pane">
+              <div class="scorer-card p-2">
+                <div id="scorers-bl2"><div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm me-2"></div>Lade...</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end tab-content -->
+</div><!-- end container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+'use strict';
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const leagueState = {
+  bl1: { currentMatchday: null, viewingMatchday: null, maxMatchday: 34, form: {} },
+  bl2: { currentMatchday: null, viewingMatchday: null, maxMatchday: 34, form: {} },
+};
+
+let countdownValue = 60;
+let countdownInterval = null;
+let expandedMatches = new Set();
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+async function apiFetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function isLive(match) {
+  if (match.matchIsFinished) return false;
+  const now = Date.now();
+  const start = new Date(match.matchDateTimeUTC).getTime();
+  return now >= start && now <= start + 3 * 60 * 60 * 1000;
+}
+
+function isToday(match) {
+  const d = new Date(match.matchDateTime);
+  const t = new Date();
+  return d.getFullYear() === t.getFullYear() &&
+         d.getMonth()    === t.getMonth()    &&
+         d.getDate()     === t.getDate();
+}
+
+function getFinalScore(match) {
+  if (!match.matchResults || !match.matchResults.length) return null;
+  return match.matchResults.find(r => r.resultTypeID === 2)
+      || match.matchResults.find(r => r.resultTypeID === 1)
+      || match.matchResults[match.matchResults.length - 1];
+}
+
+function getHalfTimeScore(match) {
+  if (!match.matchResults) return null;
+  return match.matchResults.find(r => r.resultTypeID === 1) || null;
+}
+
+function fmtTime(dateStr) {
+  return new Date(dateStr).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('de-DE', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  });
+}
+
+function logo(url, cls) {
+  if (!url) return '';
+  return `<img src="${url}" class="${cls}" alt="" onerror="this.style.display='none'">`;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Render: Match Card ───────────────────────────────────────────────────────
+
+function renderMatchCard(match) {
+  const live     = isLive(match);
+  const finished = match.matchIsFinished;
+  const today    = isToday(match);
+  const score    = getFinalScore(match);
+  const ht       = getHalfTimeScore(match);
+  const expanded = expandedMatches.has(match.matchID);
+  const form     = leagueState[match.leagueShortcut]?.form || {};
+
+  // Status badge
+  let statusHtml;
+  if (live) {
+    statusHtml = `<span class="badge bg-danger live-pulse" style="font-size:0.65rem;">● LIVE</span>`;
+  } else if (finished) {
+    statusHtml = `<span class="badge bg-secondary" style="font-size:0.65rem;">Beendet</span>`;
+  } else {
+    statusHtml = `<span class="badge bg-dark border border-secondary" style="font-size:0.65rem;">${fmtTime(match.matchDateTime)}</span>`;
+  }
+
+  // Score
+  let scoreHtml;
+  if (score !== null) {
+    scoreHtml = `<div class="score-display">${score.pointsTeam1}&thinsp;:&thinsp;${score.pointsTeam2}</div>`;
+    if (ht && (finished || live)) {
+      scoreHtml += `<div class="score-ht">(${ht.pointsTeam1}:${ht.pointsTeam2})</div>`;
+    }
+  } else {
+    scoreHtml = `<div class="score-display" style="color:#484f58;">–&thinsp;:&thinsp;–</div>`;
+  }
+
+  const t1 = match.team1;
+  const t2 = match.team2;
+  const t1form = renderFormDots(form[String(t1.teamId)] || []);
+  const t2form = renderFormDots(form[String(t2.teamId)] || []);
+  const borderClass = live ? 'is-live' : (today && !finished ? 'is-today' : '');
+
+  return `
+<div class="match-card mb-2 ${borderClass}" id="card-${match.matchID}">
+  <div class="p-2" onclick="toggleMatch(${match.matchID})" style="cursor:pointer;">
+    <div class="d-flex align-items-center">
+      <!-- Team 1 -->
+      <div class="d-flex flex-column align-items-start flex-grow-1 overflow-hidden" style="min-width:0;">
+        <div class="d-flex align-items-center gap-2">
+          ${logo(t1.teamIconUrl, 'team-logo flex-shrink-0')}
+          <span class="team-name text-truncate">${esc(t1.shortName || t1.teamName)}</span>
+        </div>
+        ${t1form ? `<div class="d-flex gap-1 mt-1 ms-1" style="padding-left:2px;">${t1form}</div>` : ''}
+      </div>
+      <!-- Score center -->
+      <div class="text-center mx-2 flex-shrink-0" style="min-width:90px;">
+        <div>${statusHtml}</div>
+        ${scoreHtml}
+      </div>
+      <!-- Team 2 -->
+      <div class="d-flex flex-column align-items-end flex-grow-1 overflow-hidden" style="min-width:0;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="team-name text-truncate">${esc(t2.shortName || t2.teamName)}</span>
+          ${logo(t2.teamIconUrl, 'team-logo flex-shrink-0')}
+        </div>
+        ${t2form ? `<div class="d-flex gap-1 mt-1 me-1 justify-content-end">${t2form}</div>` : ''}
+      </div>
+    </div>
+  </div>
+  <!-- Expanded detail section -->
+  <div class="goals-section px-3 py-2" id="goals-${match.matchID}" style="display:${expanded ? 'block' : 'none'};">
+    ${renderGoalsSection(match)}
+    ${renderGoalTimeline(match)}
+    ${renderMatchStats(match)}
+  </div>
+</div>`;
+}
+
+// ─── Render: Form Dots ────────────────────────────────────────────────────────
+
+function renderFormDots(results) {
+  if (!results || !results.length) return '';
+  const colors = { W: '#3fb950', D: '#d29922', L: '#f85149' };
+  const titles = { W: 'Sieg', D: 'Unentschieden', L: 'Niederlage' };
+  return results.map(r =>
+    `<span class="form-dot" style="background:${colors[r]};" title="${titles[r]}"></span>`
+  ).join('');
+}
+
+// ─── Render: Goals (two-column) ───────────────────────────────────────────────
+
+function renderGoalsSection(match) {
+  const goals    = match.goals || [];
+  const finished = match.matchIsFinished;
+  const live     = isLive(match);
+
+  if (!goals.length) {
+    if (finished || live) {
+      return `<div class="text-center text-muted py-1" style="font-size:0.8rem;">Keine Tore</div>`;
+    }
+    return '';
+  }
+
+  const t1name = esc(match.team1.shortName || match.team1.teamName);
+  const t2name = esc(match.team2.shortName || match.team2.teamName);
+
+  // Tag each goal with which team scored (compare with previous scoreTeam1)
+  const tagged = goals.map((g, i) => ({
+    ...g,
+    isTeam1: g.scoreTeam1 > (i === 0 ? 0 : goals[i - 1].scoreTeam1),
+  }));
+
+  const rows = tagged.map(g => {
+    const badges = [
+      g.isPenalty  ? '<span class="badge bg-secondary ms-1" style="font-size:0.58rem;">E.</span>' : '',
+      g.isOwnGoal  ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.58rem;">ET</span>' : '',
+      g.isOvertime ? '<span class="badge bg-info text-dark ms-1" style="font-size:0.58rem;">V.</span>' : '',
+    ].join('');
+    const name      = esc(g.goalGetterName || '?');
+    const scoreStr  = `<span style="color:#6e7681; font-size:0.75rem;">${g.scoreTeam1}:${g.scoreTeam2}</span>`;
+    const minStr    = `<span style="color:#6e7681; font-size:0.75rem;">${g.matchMinute}'</span>`;
+
+    if (g.isTeam1) {
+      return `<div class="d-flex" style="padding:2px 0;">
+        <div class="flex-grow-1 text-end pe-2" style="border-right:1px solid #21262d; color:#58a6ff; font-size:0.82rem;">
+          ${minStr} ${name}${badges} ${scoreStr}
+        </div>
+        <div class="flex-grow-1 ps-2"></div>
+      </div>`;
+    } else {
+      return `<div class="d-flex" style="padding:2px 0;">
+        <div class="flex-grow-1 pe-2" style="border-right:1px solid #21262d;"></div>
+        <div class="flex-grow-1 ps-2" style="color:#f0736a; font-size:0.82rem;">
+          ${minStr} ${name}${badges} ${scoreStr}
+        </div>
+      </div>`;
+    }
+  }).join('');
+
+  return `
+<div>
+  <div class="d-flex mb-1" style="font-size:0.7rem; color:#8b949e; padding-bottom:4px; border-bottom:1px solid #21262d;">
+    <div class="flex-grow-1 text-end pe-2" style="color:#388bfd;">${t1name}</div>
+    <div class="flex-grow-1 ps-2" style="color:#e05252;">${t2name}</div>
+  </div>
+  ${rows}
+</div>`;
+}
+
+// ─── Render: Goal Timeline ────────────────────────────────────────────────────
+
+function renderGoalTimeline(match) {
+  const goals = match.goals || [];
+  if (!goals.length) return '';
+
+  const maxMin = Math.max(90, ...goals.map(g => g.matchMinute)) + 3;
+  const htPct  = ((45 / maxMin) * 100).toFixed(1);
+
+  const tagged = goals.map((g, i) => ({
+    ...g,
+    isTeam1: g.scoreTeam1 > (i === 0 ? 0 : goals[i - 1].scoreTeam1),
+  }));
+
+  const markers = tagged.map(g => {
+    const pct   = ((g.matchMinute / maxMin) * 100).toFixed(1);
+    const color = g.isTeam1 ? '#388bfd' : '#e05252';
+    const label = `${g.goalGetterName || 'ET'} ${g.matchMinute}'`;
+    return `<div class="goal-timeline-marker" style="left:${pct}%; background:${color};" title="${label}"></div>`;
+  }).join('');
+
+  return `
+<div style="margin-top:10px;">
+  <div class="goal-timeline-bar">
+    <div class="goal-timeline-ht" style="left:${htPct}%;" title="Halbzeit"></div>
+    ${markers}
+  </div>
+  <div class="d-flex justify-content-between" style="font-size:0.65rem; color:#6e7681; margin-top:2px;">
+    <span>0'</span><span>HZ</span><span>${maxMin > 93 ? maxMin + "'" : "90'"}</span>
+  </div>
+</div>`;
+}
+
+// ─── Render: Match Stats Summary ──────────────────────────────────────────────
+
+function renderMatchStats(match) {
+  const ht    = getHalfTimeScore(match);
+  const score = getFinalScore(match);
+  if (!score || (!match.matchIsFinished && !isLive(match))) return '';
+
+  const goals      = match.goals || [];
+  const penalties  = goals.filter(g => g.isPenalty).length;
+  const ownGoals   = goals.filter(g => g.isOwnGoal).length;
+  const overtimeG  = goals.filter(g => g.isOvertime).length;
+
+  const parts = [];
+  if (ht && match.matchIsFinished) {
+    const h2t1 = score.pointsTeam1 - ht.pointsTeam1;
+    const h2t2 = score.pointsTeam2 - ht.pointsTeam2;
+    parts.push(`1. HZ ${ht.pointsTeam1}:${ht.pointsTeam2}&ensp;·&ensp;2. HZ ${h2t1}:${h2t2}`);
+  }
+  if (penalties) parts.push(`${penalties} Elfmeter`);
+  if (ownGoals)  parts.push(`${ownGoals} Eigentor${ownGoals > 1 ? 'e' : ''}`);
+  if (overtimeG) parts.push(`${overtimeG} Verlängerung`);
+
+  const extras = [];
+  if (match.numberOfViewers) extras.push(`<i class="bi bi-people-fill me-1"></i>${match.numberOfViewers.toLocaleString('de-DE')} Zuschauer`);
+  if (match.location?.locationStadium) extras.push(`<i class="bi bi-geo-alt-fill me-1"></i>${esc(match.location.locationStadium)}`);
+
+  return `
+<div class="match-stats-bar">
+  ${parts.length ? `<div>${parts.join('&ensp;·&ensp;')}</div>` : ''}
+  ${extras.length ? `<div class="mt-1">${extras.join('&ensp;·&ensp;')}</div>` : ''}
+</div>`;
+}
+
+// ─── Render: Matches List ─────────────────────────────────────────────────────
+
+function renderMatches(league, matches) {
+  const container = document.getElementById(`matches-${league}`);
+
+  if (!matches || matches.error) {
+    container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Fehler: ${matches?.error || 'Unbekannt'}</div>`;
+    return;
+  }
+  if (!matches.length) {
+    container.innerHTML = `<div class="text-center text-muted py-5"><i class="bi bi-calendar-x d-block mb-2" style="font-size:2rem;"></i>Keine Spiele gefunden</div>`;
+    return;
+  }
+
+  // Sort by datetime
+  matches.sort((a, b) => new Date(a.matchDateTime) - new Date(b.matchDateTime));
+
+  // Count live
+  const liveCount = matches.filter(isLive).length;
+  updateLiveIndicator(liveCount);
+
+  // Group by date
+  const groups = {};
+  matches.forEach(m => {
+    const key = fmtDate(m.matchDateTime);
+    (groups[key] = groups[key] || []).push(m);
+  });
+
+  let html = '';
+  for (const [date, group] of Object.entries(groups)) {
+    html += `<div class="date-header">${date}</div>`;
+    group.forEach(m => { html += renderMatchCard(m); });
+  }
+
+  container.innerHTML = html;
+}
+
+// ─── Render: Standings ───────────────────────────────────────────────────────
+
+function renderTable(league, table) {
+  const container = document.getElementById(`table-${league}`);
+  const legend    = document.getElementById(`legend-${league}`);
+
+  if (!table || table.error) {
+    container.innerHTML = `<div class="alert alert-danger small">Fehler: ${table?.error || 'Unbekannt'}</div>`;
+    return;
+  }
+
+  const isBL1 = league === 'bl1';
+
+  function posClass(pos) {
+    if (isBL1) {
+      if (pos <= 4) return 'pos-cl';
+      if (pos <= 6) return 'pos-el';
+      if (pos === 7) return 'pos-conf';
+      if (pos === 16) return 'pos-rel-po';
+      if (pos >= 17) return 'pos-rel';
+    } else {
+      if (pos <= 2) return 'pos-up';
+      if (pos === 3) return 'pos-up-po';
+      if (pos === 16) return 'pos-rel-po';
+      if (pos >= 17) return 'pos-rel';
+    }
+    return '';
+  }
+
+  const rows = table.map((t, i) => {
+    const pos = i + 1;
+    const gd  = t.goalDiff > 0 ? `+${t.goalDiff}` : t.goalDiff;
+    return `<tr class="${posClass(pos)}">
+      <td class="text-center text-muted" style="width:28px;">${pos}</td>
+      <td>${logo(t.teamIconUrl, 'team-logo-sm me-1')}${esc(t.shortName || t.teamName)}</td>
+      <td class="text-center">${t.matches}</td>
+      <td class="text-center d-none d-sm-table-cell">${t.won}</td>
+      <td class="text-center d-none d-sm-table-cell">${t.draw}</td>
+      <td class="text-center d-none d-sm-table-cell">${t.lost}</td>
+      <td class="text-center d-none d-md-table-cell" style="white-space:nowrap;">${t.goals}:${t.opponentGoals}</td>
+      <td class="text-center d-none d-md-table-cell">${gd}</td>
+      <td class="text-center fw-bold">${t.points}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+<table class="table table-sm table-hover align-middle">
+  <thead><tr>
+    <th class="text-center">#</th>
+    <th>Verein</th>
+    <th class="text-center">Sp</th>
+    <th class="text-center d-none d-sm-table-cell">S</th>
+    <th class="text-center d-none d-sm-table-cell">U</th>
+    <th class="text-center d-none d-sm-table-cell">N</th>
+    <th class="text-center d-none d-md-table-cell">Tore</th>
+    <th class="text-center d-none d-md-table-cell">Diff</th>
+    <th class="text-center">Pkt</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>`;
+
+  // Legend
+  if (isBL1) {
+    legend.innerHTML = `
+      <span class="me-3"><span style="border-left:3px solid #388bfd; padding-left:4px;">Champions League</span></span>
+      <span class="me-3"><span style="border-left:3px solid #d29922; padding-left:4px;">Europa League</span></span>
+      <span class="me-3"><span style="border-left:3px solid #3fb950; padding-left:4px;">Conference League</span></span>
+      <span class="me-3"><span style="border-left:3px solid #db6d28; padding-left:4px;">Relegation-Play-off</span></span>
+      <span><span style="border-left:3px solid #f85149; padding-left:4px;">Abstieg</span></span>`;
+  } else {
+    legend.innerHTML = `
+      <span class="me-3"><span style="border-left:3px solid #3fb950; padding-left:4px;">Aufstieg direkt</span></span>
+      <span class="me-3"><span style="border-left:3px solid #388bfd; padding-left:4px;">Aufstieg Play-off</span></span>
+      <span class="me-3"><span style="border-left:3px solid #db6d28; padding-left:4px;">Abstieg Play-off</span></span>
+      <span><span style="border-left:3px solid #f85149; padding-left:4px;">Abstieg</span></span>`;
+  }
+}
+
+// ─── Render: Top Scorers ─────────────────────────────────────────────────────
+
+function renderScorers(league, scorers) {
+  const container = document.getElementById(`scorers-${league}`);
+
+  if (!scorers || scorers.error || !scorers.length) {
+    container.innerHTML = `<div class="text-muted text-center small py-3">Keine Daten verfügbar</div>`;
+    return;
+  }
+
+  const top = scorers.slice(0, 15);
+  const maxGoals = top[0]?.goalCount || 1;
+
+  const rows = top.map((s, i) => {
+    const barWidth = Math.round((s.goalCount / maxGoals) * 100);
+    const name = esc(s.goalGetterName || s.playerName || 'Unbekannt');
+    return `<div class="mb-2 px-1">
+      <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:0.82rem;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted" style="min-width:18px; font-size:0.75rem;">${i + 1}.</span>
+          <span>${name}</span>
+        </div>
+        <span class="fw-bold">${s.goalCount}</span>
+      </div>
+      <div class="scorer-bar" style="width:${barWidth}%;"></div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `<div style="font-size:0.8rem; color:#8b949e; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">Torjäger ${new Date().getFullYear()}</div>${rows}`;
+}
+
+// ─── Live Indicator ───────────────────────────────────────────────────────────
+
+function updateLiveIndicator(count) {
+  const ind   = document.getElementById('live-indicator');
+  const cnt   = document.getElementById('live-count');
+  if (count > 0) {
+    cnt.textContent = count;
+    ind.style.display = 'inline-flex';
+    ind.style.alignItems = 'center';
+  } else {
+    ind.style.display = 'none';
+  }
+}
+
+// ─── Toggle match details ─────────────────────────────────────────────────────
+
+function toggleMatch(id) {
+  const el = document.getElementById(`goals-${id}`);
+  if (!el) return;
+  if (expandedMatches.has(id)) {
+    expandedMatches.delete(id);
+    el.style.display = 'none';
+  } else {
+    expandedMatches.add(id);
+    el.style.display = 'block';
+  }
+}
+
+// ─── Matchday Navigation ──────────────────────────────────────────────────────
+
+async function prevMatchday(league) {
+  const s = leagueState[league];
+  if (s.viewingMatchday > 1) {
+    s.viewingMatchday--;
+    await loadMatchday(league, s.viewingMatchday);
+  }
+}
+
+async function nextMatchday(league) {
+  const s = leagueState[league];
+  if (s.viewingMatchday < s.maxMatchday) {
+    s.viewingMatchday++;
+    await loadMatchday(league, s.viewingMatchday);
+  }
+}
+
+async function goToCurrentMatchday(league) {
+  const s = leagueState[league];
+  s.viewingMatchday = s.currentMatchday;
+  await loadMatchday(league, s.currentMatchday);
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
+
+async function loadMatchday(league, matchday) {
+  const label = document.getElementById(`matchday-label-${league}`);
+  label.textContent = `${matchday}. Spieltag`;
+
+  // Update nav buttons
+  const s = leagueState[league];
+  document.getElementById(`prev-${league}`).disabled = matchday <= 1;
+  document.getElementById(`next-${league}`).disabled = matchday >= s.maxMatchday;
+
+  try {
+    const matches = await apiFetch(`/api/matches/${league}/${matchday}`);
+    renderMatches(league, matches);
+  } catch (e) {
+    document.getElementById(`matches-${league}`).innerHTML =
+      `<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Verbindungsfehler: ${e.message}</div>`;
+  }
+}
+
+async function loadLeague(league) {
+  try {
+    const group = await apiFetch(`/api/currentgroup/${league}`);
+    if (group.error) throw new Error(group.error);
+
+    const matchday = group.groupOrderID;
+    leagueState[league].currentMatchday = matchday;
+    if (!leagueState[league].viewingMatchday) {
+      leagueState[league].viewingMatchday = matchday;
+    }
+
+    // Load matches for currently viewed matchday
+    await loadMatchday(league, leagueState[league].viewingMatchday);
+  } catch (e) {
+    document.getElementById(`matchday-label-${league}`).textContent = 'Fehler';
+    document.getElementById(`matches-${league}`).innerHTML =
+      `<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i>${e.message}</div>`;
+  }
+
+  // Table, scorers, and form in parallel (non-blocking)
+  apiFetch(`/api/table/${league}`)
+    .then(data => renderTable(league, data))
+    .catch(e => { document.getElementById(`table-${league}`).innerHTML = `<div class="alert alert-danger small">${e.message}</div>`; });
+
+  apiFetch(`/api/scorers/${league}`)
+    .then(data => renderScorers(league, data))
+    .catch(() => {});
+
+  // Load form, then re-render matches so form dots appear
+  apiFetch(`/api/form/${league}`)
+    .then(data => {
+      leagueState[league].form = data;
+      // Re-render current matches with form data populated
+      const md = leagueState[league].viewingMatchday;
+      if (md) loadMatchday(league, md);
+    })
+    .catch(() => {});
+}
+
+// ─── Refresh ──────────────────────────────────────────────────────────────────
+
+async function refreshAll() {
+  const spinner = document.getElementById('refresh-spinner');
+  spinner.style.display = 'inline-block';
+
+  await Promise.allSettled([loadLeague('bl1'), loadLeague('bl2')]);
+
+  spinner.style.display = 'none';
+  document.getElementById('last-update').textContent =
+    new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  countdownValue = 60;
+}
+
+function manualRefresh() {
+  countdownValue = 60;
+  refreshAll();
+}
+
+function startCountdown() {
+  countdownInterval = setInterval(() => {
+    countdownValue--;
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = countdownValue;
+    if (countdownValue <= 0) {
+      countdownValue = 60;
+      refreshAll();
+    }
+  }, 1000);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await refreshAll();
+  startCountdown();
+});
+</script>
+</body>
+</html>

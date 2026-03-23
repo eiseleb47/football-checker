@@ -1,0 +1,108 @@
+from flask import Flask, render_template, jsonify
+import requests
+import logging
+import time
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+BASE_URL = "https://api.openligadb.de"
+CURRENT_SEASON = "2025"  # 2025/26 season
+
+# Simple TTL cache: {key: (timestamp, data)}
+_cache: dict = {}
+CACHE_TTL = 300  # 5 minutes
+
+
+def api_get(path, ttl=60):
+    now = time.time()
+    if path in _cache:
+        ts, data = _cache[path]
+        if now - ts < ttl:
+            return data
+    try:
+        r = requests.get(f"{BASE_URL}{path}", timeout=10)
+        r.raise_for_status()
+        data = r.json()
+    except requests.exceptions.RequestException as e:
+        logging.error("API error for %s: %s", path, e)
+        return {"error": str(e)}
+    _cache[path] = (now, data)
+    return data
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/api/currentgroup/<league>")
+def current_group(league):
+    return jsonify(api_get(f"/getcurrentgroup/{league}"))
+
+
+@app.route("/api/matches/<league>/<int:matchday>")
+def matches_by_day(league, matchday):
+    return jsonify(api_get(f"/getmatchdata/{league}/{CURRENT_SEASON}/{matchday}"))
+
+
+@app.route("/api/table/<league>")
+def table(league):
+    return jsonify(api_get(f"/getbltable/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL))
+
+
+@app.route("/api/scorers/<league>")
+def scorers(league):
+    return jsonify(api_get(f"/getgoalgetters/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL))
+
+
+@app.route("/api/form/<league>")
+def team_form(league):
+    """Compute last-5 form (W/D/L) for every team in the league."""
+    cache_key = f"form_{league}"
+    now = time.time()
+    if cache_key in _cache:
+        ts, data = _cache[cache_key]
+        if now - ts < CACHE_TTL:
+            return jsonify(data)
+
+    group = api_get(f"/getcurrentgroup/{league}")
+    if "error" in group:
+        return jsonify({})
+
+    current_md = group.get("groupOrderID", 1)
+    form: dict = {}  # {str(teamId): [oldest→newest]}
+
+    start_md = max(1, current_md - 5)
+    for md in range(start_md, current_md + 1):
+        matches = api_get(f"/getmatchdata/{league}/{CURRENT_SEASON}/{md}", ttl=CACHE_TTL)
+        if not isinstance(matches, list):
+            continue
+        for match in matches:
+            if not match.get("matchIsFinished"):
+                continue
+            final = next((r for r in match.get("matchResults", []) if r["resultTypeID"] == 2), None)
+            if not final:
+                continue
+            t1 = str(match["team1"]["teamId"])
+            t2 = str(match["team2"]["teamId"])
+            s1, s2 = final["pointsTeam1"], final["pointsTeam2"]
+            form.setdefault(t1, [])
+            form.setdefault(t2, [])
+            if s1 > s2:
+                form[t1].append("W")
+                form[t2].append("L")
+            elif s1 < s2:
+                form[t1].append("L")
+                form[t2].append("W")
+            else:
+                form[t1].append("D")
+                form[t2].append("D")
+
+    result = {k: v[-5:] for k, v in form.items()}
+    _cache[cache_key] = (now, result)
+    return jsonify(result)
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
