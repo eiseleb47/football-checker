@@ -117,4 +117,5 @@ def team_form(league):
 if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     host = os.getenv("FLASK_HOST", "127.0.0.1")
-    app.run(debug=debug, host=host, port=5000)
+    port = int(os.getenv("PORT", 5000))
+    app.run(debug=debug, host=host, port=port)

@@ -43,8 +43,11 @@ No API keys are required. Match data is fetched from [OpenLigaDB](https://openli
 
 ## Usage
 
+**Web app (browser)**
+
 ```bash
 python app.py
+# Then open http://localhost:5000
 ```
 
 Or use the included launcher, which creates and activates the virtual environment automatically:
@@ -59,7 +62,19 @@ Or via Make:
 make run
 ```
 
-Then open [http://localhost:5000](http://localhost:5000) in your browser.
+**Desktop GUI**
+
+```bash
+# One-time install (installs PySide6, writes .desktop entry + icon)
+./install-desktop.sh
+
+# Launch directly
+./launch.sh
+
+# Or from the application menu: search "Football Checker"
+```
+
+The desktop GUI wraps the Flask app in a native Qt window (PySide6 + QtWebEngine). The server starts automatically on a free local port and is shut down cleanly when the window is closed — no manual Ctrl+C needed.
 
 ## Running the Tests
 
@@ -81,6 +96,12 @@ CI runs on Python 3.11 and 3.12 via GitHub Actions on every push and pull reques
 ```
 football_checker/
 ├── app.py                        # Flask backend and OpenLigaDB proxy with TTL cache
+├── gui.py                        # Desktop GUI launcher (PySide6 + QtWebEngine)
+├── launch.sh                     # Shell wrapper; runs gui.py via the venv
+├── install-desktop.sh            # Installs .desktop entry + icon for the app launcher
+├── uninstall-desktop.sh          # Removes the .desktop entry and icon
+├── assets/
+│   └── icon.svg                  # App icon (football, dark navy background)
 ├── templates/
 │   └── index.html                # Single-page frontend (Bootstrap 5.3 dark theme, vanilla JS)
 ├── tests/
