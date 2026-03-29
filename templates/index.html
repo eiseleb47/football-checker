@@ -646,33 +646,41 @@ function renderGoalTimeline(match) {
 // ─── Render: Match Stats Summary ──────────────────────────────────────────────
 
 function renderMatchStats(match) {
-  const ht    = getHalfTimeScore(match);
+  const ht   = getHalfTimeScore(match);
   const score = getFinalScore(match);
-  if (!score || (!match.matchIsFinished && !isLive(match))) return '';
-
-  const goals      = match.goals || [];
-  const penalties  = goals.filter(g => g.isPenalty).length;
-  const ownGoals   = goals.filter(g => g.isOwnGoal).length;
-  const overtimeG  = goals.filter(g => g.isOvertime).length;
+  const live  = isLive(match);
 
   const parts = [];
-  if (ht && match.matchIsFinished) {
-    const h2t1 = score.pointsTeam1 - ht.pointsTeam1;
-    const h2t2 = score.pointsTeam2 - ht.pointsTeam2;
-    parts.push(`1. HZ ${ht.pointsTeam1}:${ht.pointsTeam2}&ensp;·&ensp;2. HZ ${h2t1}:${h2t2}`);
+  if (score && (match.matchIsFinished || live)) {
+    const goals     = match.goals || [];
+    const penalties = goals.filter(g => g.isPenalty).length;
+    const ownGoals  = goals.filter(g => g.isOwnGoal).length;
+    const overtimeG = goals.filter(g => g.isOvertime).length;
+    if (ht && match.matchIsFinished) {
+      const h2t1 = score.pointsTeam1 - ht.pointsTeam1;
+      const h2t2 = score.pointsTeam2 - ht.pointsTeam2;
+      parts.push(`1. HZ ${ht.pointsTeam1}:${ht.pointsTeam2}&ensp;·&ensp;2. HZ ${h2t1}:${h2t2}`);
+    }
+    if (penalties) parts.push(`${penalties} Elfmeter`);
+    if (ownGoals)  parts.push(`${ownGoals} Eigentor${ownGoals > 1 ? 'e' : ''}`);
+    if (overtimeG) parts.push(`${overtimeG} Verlängerung`);
   }
-  if (penalties) parts.push(`${penalties} Elfmeter`);
-  if (ownGoals)  parts.push(`${ownGoals} Eigentor${ownGoals > 1 ? 'e' : ''}`);
-  if (overtimeG) parts.push(`${overtimeG} Verlängerung`);
 
   const extras = [];
   if (match.numberOfViewers) extras.push(`<i class="bi bi-people-fill me-1"></i>${match.numberOfViewers.toLocaleString('de-DE')} Zuschauer`);
-  if (match.location?.locationStadium) extras.push(`<i class="bi bi-geo-alt-fill me-1"></i>${esc(match.location.locationStadium)}`);
+  if (match.location?.locationStadium) {
+    const venue = match.location.locationCity
+      ? `${esc(match.location.locationStadium)}, ${esc(match.location.locationCity)}`
+      : esc(match.location.locationStadium);
+    extras.push(`<i class="bi bi-geo-alt-fill me-1"></i>${venue}`);
+  }
+
+  if (!parts.length && !extras.length) return '';
 
   return `
 <div class="match-stats-bar">
   ${parts.length ? `<div>${parts.join('&ensp;·&ensp;')}</div>` : ''}
-  ${extras.length ? `<div class="mt-1">${extras.join('&ensp;·&ensp;')}</div>` : ''}
+  ${extras.length ? `<div class="${parts.length ? 'mt-1' : ''}">${extras.join('&ensp;·&ensp;')}</div>` : ''}
 </div>`;
 }
 
