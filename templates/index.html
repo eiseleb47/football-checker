@@ -619,7 +619,7 @@ function renderGoalsSection(match) {
     const badges = [
       g.isPenalty  ? '<span class="badge bg-secondary ms-1" style="font-size:0.58rem;">E.</span>' : '',
       g.isOwnGoal  ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.58rem;">ET</span>' : '',
-      g.isOvertime ? '<span class="badge bg-info text-dark ms-1" style="font-size:0.58rem;">V.</span>' : '',
+      '',
     ].join('');
     const name      = esc(g.goalGetterName || '?');
     const scoreStr  = `<span style="color:#6e7681; font-size:0.75rem;">${g.scoreTeam1}:${g.scoreTeam2}</span>`;
@@ -697,7 +697,6 @@ function renderMatchStats(match) {
     const goals     = match.goals || [];
     const penalties = goals.filter(g => g.isPenalty).length;
     const ownGoals  = goals.filter(g => g.isOwnGoal).length;
-    const overtimeG = goals.filter(g => g.isOvertime).length;
     if (ht && match.matchIsFinished) {
       const h2t1 = score.pointsTeam1 - ht.pointsTeam1;
       const h2t2 = score.pointsTeam2 - ht.pointsTeam2;
@@ -705,7 +704,6 @@ function renderMatchStats(match) {
     }
     if (penalties) parts.push(`${penalties} Elfmeter`);
     if (ownGoals)  parts.push(`${ownGoals} Eigentor${ownGoals > 1 ? 'e' : ''}`);
-    if (overtimeG) parts.push(`${overtimeG} Verlängerung`);
   }
 
   const extras = [];
