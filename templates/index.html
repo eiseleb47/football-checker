@@ -437,9 +437,27 @@ function fmtDate(dateStr) {
   });
 }
 
-function logo(url, cls) {
+const LOGO_PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#30363d" stroke="#484f58" stroke-width="1.5"/></svg>');
+
+async function onLogoError(img) {
+  img.onerror = null;
+  const name = img.dataset.name;
+  if (name) {
+    try {
+      const r = await fetch(`https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(4000) });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.thumbnail?.source) { img.src = d.thumbnail.source; return; }
+      }
+    } catch (_) {}
+  }
+  img.src = LOGO_PLACEHOLDER;
+}
+
+function logo(url, cls, name) {
   if (!url) return '';
-  return `<img src="${url}" class="${cls}" alt="" onerror="this.style.display='none'">`;
+  const na = name ? ` data-name="${esc(name)}"` : '';
+  return `<img src="${url}" class="${cls}" alt=""${na} onerror="onLogoError(this)">`;
 }
 
 function esc(str) {
@@ -490,9 +508,9 @@ function renderMatchCard(match) {
   <div class="p-2" onclick="toggleMatch(${match.matchID})" style="cursor:pointer;">
     <div class="d-flex align-items-center">
       <!-- Team 1 -->
-      <div class="d-flex flex-column align-items-start flex-grow-1 overflow-hidden" style="min-width:0;">
+      <div class="d-flex flex-column align-items-start overflow-hidden" style="flex:1 1 0%;min-width:0;">
         <div class="d-flex align-items-center gap-2">
-          ${logo(t1.teamIconUrl, 'team-logo flex-shrink-0')}
+          ${logo(t1.teamIconUrl, 'team-logo flex-shrink-0', t1.teamName)}
           <span class="team-name text-truncate">${esc(t1.shortName || t1.teamName)}</span>
         </div>
         ${t1form ? `<div class="d-flex gap-1 mt-1 ms-1" style="padding-left:2px;">${t1form}</div>` : ''}
@@ -503,10 +521,10 @@ function renderMatchCard(match) {
         ${scoreHtml}
       </div>
       <!-- Team 2 -->
-      <div class="d-flex flex-column align-items-end flex-grow-1 overflow-hidden" style="min-width:0;">
+      <div class="d-flex flex-column align-items-end overflow-hidden" style="flex:1 1 0%;min-width:0;">
         <div class="d-flex align-items-center gap-2">
           <span class="team-name text-truncate">${esc(t2.shortName || t2.teamName)}</span>
-          ${logo(t2.teamIconUrl, 'team-logo flex-shrink-0')}
+          ${logo(t2.teamIconUrl, 'team-logo flex-shrink-0', t2.teamName)}
         </div>
         ${t2form ? `<div class="d-flex gap-1 mt-1 me-1 justify-content-end">${t2form}</div>` : ''}
       </div>
@@ -729,7 +747,7 @@ function renderTable(league, table) {
     const gd  = t.goalDiff > 0 ? `+${t.goalDiff}` : t.goalDiff;
     return `<tr class="${posClass(pos)}">
       <td class="text-center text-muted" style="width:28px;">${pos}</td>
-      <td>${logo(t.teamIconUrl, 'team-logo-sm me-1')}${esc(t.shortName || t.teamName)}</td>
+      <td>${logo(t.teamIconUrl, 'team-logo-sm me-1', t.teamName)}${esc(t.shortName || t.teamName)}</td>
       <td class="text-center">${t.matches}</td>
       <td class="text-center d-none d-sm-table-cell">${t.won}</td>
       <td class="text-center d-none d-sm-table-cell">${t.draw}</td>
