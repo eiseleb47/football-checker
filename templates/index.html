@@ -439,6 +439,48 @@ function fmtDate(dateStr) {
 
 const LOGO_PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#30363d" stroke="#484f58" stroke-width="1.5"/></svg>');
 
+// Home-team stadium lookup keyed by OpenLigaDB teamInfoId (2025/26 season)
+const STADIUM_MAP = {
+  // Bundesliga 1
+  40:   {stadium: 'Allianz Arena',                      city: 'München'},
+  7:    {stadium: 'Signal Iduna Park',                  city: 'Dortmund'},
+  16:   {stadium: 'MHPArena',                           city: 'Stuttgart'},
+  1635: {stadium: 'Red Bull Arena',                     city: 'Leipzig'},
+  175:  {stadium: 'PreZero Arena',                      city: 'Sinsheim'},
+  6:    {stadium: 'BayArena',                           city: 'Leverkusen'},
+  91:   {stadium: 'Deutsche Bank Park',                 city: 'Frankfurt am Main'},
+  112:  {stadium: 'Europa-Park Stadion',                city: 'Freiburg'},
+  80:   {stadium: 'An der Alten Försterei',             city: 'Berlin'},
+  95:   {stadium: 'WWK Arena',                          city: 'Augsburg'},
+  81:   {stadium: 'MEWA Arena',                         city: 'Mainz'},
+  100:  {stadium: 'Volksparkstadion',                   city: 'Hamburg'},
+  87:   {stadium: 'Borussia-Park',                      city: 'Mönchengladbach'},
+  134:  {stadium: 'Weser-Stadion',                      city: 'Bremen'},
+  65:   {stadium: 'RheinEnergieStadion',                city: 'Köln'},
+  98:   {stadium: 'Millerntor-Stadion',                 city: 'Hamburg'},
+  131:  {stadium: 'Volkswagen Arena',                   city: 'Wolfsburg'},
+  199:  {stadium: 'Voith-Arena',                        city: 'Heidenheim'},
+  // Bundesliga 2
+  9:    {stadium: 'Veltins-Arena',                      city: 'Gelsenkirchen'},
+  198:  {stadium: 'Ursapharm-Arena an der Kaiserlinde', city: 'Elversberg'},
+  31:   {stadium: 'Benteler-Arena',                     city: 'Paderborn'},
+  118:  {stadium: 'Merck-Stadion am Böllenfalltor',     city: 'Darmstadt'},
+  55:   {stadium: 'HDI Arena',                          city: 'Hannover'},
+  54:   {stadium: 'Olympiastadion',                     city: 'Berlin'},
+  76:   {stadium: 'Fritz Walter Stadion',               city: 'Kaiserslautern'},
+  105:  {stadium: 'BBBank Wildpark',                    city: 'Karlsruhe'},
+  79:   {stadium: 'Max-Morlock-Stadion',                city: 'Nürnberg'},
+  129:  {stadium: 'Vonovia Ruhrstadion',                city: 'Bochum'},
+  185:  {stadium: 'Merkur Spiel-Arena',                 city: 'Düsseldorf'},
+  177:  {stadium: 'Rudolf-Harbig-Stadion',              city: 'Dresden'},
+  74:   {stadium: 'Eintracht-Stadion',                  city: 'Braunschweig'},
+  115:  {stadium: 'Sportpark Ronhof',                   city: 'Fürth'},
+  83:   {stadium: 'SchücoArena',                        city: 'Bielefeld'},
+  104:  {stadium: 'Holstein-Stadion',                   city: 'Kiel'},
+  78:   {stadium: 'MDCC-Arena',                         city: 'Magdeburg'},
+  188:  {stadium: 'Preußenstadion',                     city: 'Münster'},
+};
+
 async function onLogoError(img) {
   img.onerror = null;
   const name = img.dataset.name;
@@ -668,11 +710,13 @@ function renderMatchStats(match) {
 
   const extras = [];
   if (match.numberOfViewers) extras.push(`<i class="bi bi-people-fill me-1"></i>${match.numberOfViewers.toLocaleString('de-DE')} Zuschauer`);
-  if (match.location?.locationStadium) {
-    const venue = match.location.locationCity
-      ? `${esc(match.location.locationStadium)}, ${esc(match.location.locationCity)}`
-      : esc(match.location.locationStadium);
-    extras.push(`<i class="bi bi-geo-alt-fill me-1"></i>${venue}`);
+  const loc = match.location?.locationStadium
+    ? match.location
+    : STADIUM_MAP[match.team1?.teamId];
+  if (loc?.stadium || loc?.locationStadium) {
+    const name = loc.locationStadium || loc.stadium;
+    const city = loc.locationCity   || loc.city || '';
+    extras.push(`<i class="bi bi-geo-alt-fill me-1"></i>${esc(name)}${city ? ', ' + esc(city) : ''}`);
   }
 
   if (!parts.length && !extras.length) return '';
