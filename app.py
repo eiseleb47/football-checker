@@ -61,6 +61,57 @@ def table(league):
     return jsonify(api_get(f"/getbltable/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL))
 
 
+@app.route("/api/table/<league>/prev")
+def table_prev(league):
+    """Return standings before the current matchday's finished games."""
+    current_table = api_get(f"/getbltable/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL)
+    if not isinstance(current_table, list):
+        return jsonify(current_table)
+
+    group = api_get(f"/getcurrentgroup/{league}")
+    if not isinstance(group, dict) or "groupOrderID" not in group:
+        return jsonify(current_table)
+
+    current_md = group["groupOrderID"]
+    matches = api_get(f"/getmatchdata/{league}/{CURRENT_SEASON}/{current_md}")
+    if not isinstance(matches, list):
+        return jsonify(current_table)
+
+    finished = [m for m in matches if m.get("matchIsFinished")]
+    if not finished:
+        return jsonify(current_table)
+
+    teams = {t["teamName"]: dict(t) for t in current_table}
+
+    for match in finished:
+        final = next((r for r in match.get("matchResults", []) if r["resultTypeID"] == 2), None)
+        if not final:
+            continue
+        t1 = teams.get(match["team1"]["teamName"])
+        t2 = teams.get(match["team2"]["teamName"])
+        s1, s2 = final["pointsTeam1"], final["pointsTeam2"]
+
+        for team, goals_for, goals_against in [(t1, s1, s2), (t2, s2, s1)]:
+            if team:
+                team["matches"] -= 1
+                team["goals"] -= goals_for
+                team["opponentGoals"] -= goals_against
+                team["goalDiff"] = team["goals"] - team["opponentGoals"]
+
+        if s1 > s2:
+            if t1: t1["points"] -= 3; t1["won"] -= 1
+            if t2: t2["lost"] -= 1
+        elif s1 < s2:
+            if t2: t2["points"] -= 3; t2["won"] -= 1
+            if t1: t1["lost"] -= 1
+        else:
+            if t1: t1["points"] -= 1; t1["draw"] -= 1
+            if t2: t2["points"] -= 1; t2["draw"] -= 1
+
+    prev_table = sorted(teams.values(), key=lambda t: (-t["points"], -t["goalDiff"], -t["goals"]))
+    return jsonify(prev_table)
+
+
 @app.route("/api/scorers/<league>")
 def scorers(league):
     return jsonify(api_get(f"/getgoalgetters/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL))

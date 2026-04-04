@@ -126,6 +126,12 @@
     .pos-up td:first-child   { border-left: 3px solid #3fb950; }
     .pos-up-po td:first-child { border-left: 3px solid #388bfd; }
 
+    /* Position change indicators */
+    .pos-change { font-size: 1.2rem; font-weight: 700; margin-left: 3px; vertical-align: middle; position: relative; top: -0.05em; }
+    .pos-change.pos-up   { color: #3fb950; }
+    .pos-change.pos-down { color: #f85149; }
+    .pos-change.pos-same { color: #8b949e; }
+
     /* Scorers */
     .scorer-card {
       background-color: #161b22;
@@ -765,7 +771,7 @@ function renderMatches(league, matches) {
 
 // ─── Render: Standings ───────────────────────────────────────────────────────
 
-function renderTable(league, table) {
+function renderTable(league, table, prevTable = null) {
   const container = document.getElementById(`table-${league}`);
   const legend    = document.getElementById(`legend-${league}`);
 
@@ -792,11 +798,24 @@ function renderTable(league, table) {
     return '';
   }
 
+  const prevPos = {};
+  if (prevTable && !prevTable.error && Array.isArray(prevTable)) {
+    prevTable.forEach((t, i) => { prevPos[t.teamName] = i + 1; });
+  }
+  const showChanges = Object.keys(prevPos).length > 0;
+
   const rows = table.map((t, i) => {
     const pos = i + 1;
     const gd  = t.goalDiff > 0 ? `+${t.goalDiff}` : t.goalDiff;
+    const old = showChanges ? prevPos[t.teamName] : null;
+    const changeHtml = !showChanges ? '' :
+      (old === undefined || old === pos)
+        ? `<span class="pos-change pos-same">–</span>`
+        : pos < old
+          ? `<span class="pos-change pos-up">↑</span>`
+          : `<span class="pos-change pos-down">↓</span>`;
     return `<tr class="${posClass(pos)}">
-      <td class="text-center text-muted" style="width:28px;">${pos}</td>
+      <td class="text-center text-muted" style="width:28px;">${pos}${changeHtml}</td>
       <td>${logo(t.teamIconUrl, 'team-logo-sm me-1', t.teamName)}${esc(t.shortName || t.teamName)}</td>
       <td class="text-center">${t.matches}</td>
       <td class="text-center d-none d-sm-table-cell">${t.won}</td>
@@ -964,9 +983,14 @@ async function loadLeague(league) {
   }
 
   // Table, scorers, and form in parallel (non-blocking)
-  apiFetch(`/api/table/${league}`)
-    .then(data => renderTable(league, data))
-    .catch(e => { document.getElementById(`table-${league}`).innerHTML = `<div class="alert alert-danger small">${e.message}</div>`; });
+  Promise.all([
+    apiFetch(`/api/table/${league}`),
+    apiFetch(`/api/table/${league}/prev`)
+  ]).then(([current, prev]) => {
+    renderTable(league, current, prev);
+  }).catch(e => {
+    document.getElementById(`table-${league}`).innerHTML = `<div class="alert alert-danger small">${e.message}</div>`;
+  });
 
   apiFetch(`/api/scorers/${league}`)
     .then(data => renderScorers(league, data))

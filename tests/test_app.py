@@ -96,6 +96,42 @@ def test_table_returns_18_teams(client):
     assert len(r.get_json()) == 18
 
 
+def test_table_prev_reverses_finished_match(client):
+    """prev endpoint should subtract matchday results from current standings."""
+    table = [
+        {"teamName": "Team 1", "shortName": "T1", "teamIconUrl": None,
+         "points": 54, "matches": 28, "won": 17, "draw": 3, "lost": 8,
+         "goals": 52, "opponentGoals": 30, "goalDiff": 22},
+        {"teamName": "Team 2", "shortName": "T2", "teamIconUrl": None,
+         "points": 51, "matches": 28, "won": 16, "draw": 3, "lost": 9,
+         "goals": 48, "opponentGoals": 32, "goalDiff": 16},
+    ]
+    # Team 1 beat Team 2 2-1 on the current matchday
+    match = _mock_match(1, 2, 2, 1, finished=True)
+    group = {"groupOrderID": 28, "groupName": "28. Spieltag", "groupID": 100}
+
+    def fake_api_get(path, ttl=60):
+        if "getbltable" in path and "28" not in path:
+            return table
+        if "getcurrentgroup" in path:
+            return group
+        if "getmatchdata" in path:
+            return [match]
+        return {}
+
+    with patch("app.api_get", side_effect=fake_api_get):
+        r = client.get("/api/table/bl1/prev")
+    assert r.status_code == 200
+    data = r.get_json()
+    # After reversing: Team1 had 51 pts, Team2 had 51 pts → re-sorted
+    t1 = next(t for t in data if t["teamName"] == "Team 1")
+    t2 = next(t for t in data if t["teamName"] == "Team 2")
+    assert t1["points"] == 51  # 54 - 3
+    assert t1["matches"] == 27
+    assert t2["points"] == 51  # unchanged (lost, 0 pts)
+    assert t2["matches"] == 27
+
+
 # ── Route: /api/scorers ───────────────────────────────────────────────────────
 
 def test_scorers_returns_list(client):
