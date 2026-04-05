@@ -876,10 +876,12 @@ function renderScorers(league, scorers) {
   const rows = top.map((s, i) => {
     const barWidth = Math.round((s.goalCount / maxGoals) * 100);
     const name = esc(s.goalGetterName || s.playerName || 'Unbekannt');
+    const teamLogo = s.teamIconUrl ? logo(s.teamIconUrl, 'team-logo-sm flex-shrink-0', s.teamName) : '';
     return `<div class="mb-2 px-1">
       <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:0.82rem;">
         <div class="d-flex align-items-center gap-2">
           <span class="text-muted" style="min-width:18px; font-size:0.75rem;">${i + 1}.</span>
+          ${teamLogo}
           <span>${name}</span>
         </div>
         <span class="fw-bold">${s.goalCount}</span>

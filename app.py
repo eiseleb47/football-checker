@@ -112,9 +112,63 @@ def table_prev(league):
     return jsonify(prev_table)
 
 
+def _build_scorer_team_map(league):
+    """Return {goalGetterId: {teamId, teamName, teamIconUrl}} built from match goal data."""
+    cache_key = f"scorer_team_map_{league}"
+    now = time.time()
+    if cache_key in _cache:
+        ts, data = _cache[cache_key]
+        if now - ts < CACHE_TTL:
+            return data
+
+    group = api_get(f"/getcurrentgroup/{league}")
+    if not isinstance(group, dict) or "groupOrderID" not in group:
+        return {}
+
+    current_md = group["groupOrderID"]
+    team_map = {}
+
+    for md in range(1, current_md + 1):
+        matches = api_get(f"/getmatchdata/{league}/{CURRENT_SEASON}/{md}", ttl=CACHE_TTL)
+        if not isinstance(matches, list):
+            continue
+        for match in matches:
+            t1 = match.get("team1", {})
+            t2 = match.get("team2", {})
+            goals = match.get("goals", [])
+            for i, g in enumerate(goals):
+                gid = g.get("goalGetterID") or g.get("goalGetterId")
+                if not gid or gid in team_map:
+                    continue
+                prev_t1 = goals[i - 1].get("scoreTeam1", 0) if i > 0 else 0
+                is_team1_score = g.get("scoreTeam1", 0) > prev_t1
+                is_own_goal = g.get("isOwnGoal", False)
+                team = t1 if (is_team1_score != is_own_goal) else t2
+                team_map[gid] = {
+                    "teamId": team.get("teamId"),
+                    "teamName": team.get("teamName"),
+                    "teamIconUrl": team.get("teamIconUrl"),
+                }
+
+    _cache[cache_key] = (now, team_map)
+    return team_map
+
+
 @app.route("/api/scorers/<league>")
 def scorers(league):
-    return jsonify(api_get(f"/getgoalgetters/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL))
+    raw = api_get(f"/getgoalgetters/{league}/{CURRENT_SEASON}", ttl=CACHE_TTL)
+    if not isinstance(raw, list):
+        return jsonify(raw)
+
+    team_map = _build_scorer_team_map(league)
+    enriched = []
+    for s in raw:
+        gid = s.get("goalGetterId") or s.get("goalGetterID")
+        entry = dict(s)
+        if gid and gid in team_map:
+            entry.update(team_map[gid])
+        enriched.append(entry)
+    return jsonify(enriched)
 
 
 @app.route("/api/form/<league>")
